@@ -111,6 +111,11 @@ class RequestsTestCase(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.history), 2)
 
+    @vcr
+    def test_get_fdsn(self):
+        r = requests.get('http://service.iris.edu/fdsnws/event/1/contributors')
+        self.assertEqual(r.status_code, 200)
+
 
 if __name__ == '__main__':
     unittest.main()

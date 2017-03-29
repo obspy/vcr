@@ -83,7 +83,7 @@ class VCRSystem(object):
     debug = False
     disabled = False
     overwrite = False
-    recv_timeout = 3
+    recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
 
@@ -95,7 +95,7 @@ class VCRSystem(object):
         cls.debug = False
         cls.disabled = False
         cls.overwrite = False
-        cls.recv_timeout = 3
+        cls.recv_timeout = 5
         cls.recv_endmarkers = []
         cls.recv_size = None
 
@@ -160,13 +160,13 @@ def vcr_getaddrinfo(*args, **kwargs):
 def vcr_select_epoll():
     if VCRSystem.status == VCR_PLAYBACK:
         class FakeEPoll(object):
-            def register(self, *args, **kwargs):
+            def register(self, *args, **kwargs):  # @UnusedVariable
                 return True
 
             def close(self):
                 return True
 
-            def poll(self, *args, **kwargs):
+            def poll(self, *args, **kwargs):  # @UnusedVariable
                 return []
 
         return FakeEPoll()
