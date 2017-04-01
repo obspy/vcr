@@ -81,11 +81,15 @@ class VCRSystem(object):
     ``recv_size`` : int
         Will request given number of bytes in socket recv calls. Option is
         ignored if not set (default).
+    ``raise_if_not_needed`` : bool
+        Raise if vcr decorator is not needed because no socket traffic is
+        recorded, instead of just showing a warning.
     """
     debug = False
     disabled = False
     overwrite = False
     playback_only = False
+    raise_if_not_needed = False
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
@@ -494,7 +498,11 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 # write to file
                 if len(VCRSystem.playlist) == 0:
                     msg = 'no socket activity - @vcr decorator unneeded for %s'
-                    warnings.warn(msg % (func.__name__))
+                    msg = msg % func.__name__
+                    if VCRSystem.raise_if_not_needed:
+                        raise Exception(msg)
+                    else:
+                        warnings.warn(msg)
                 else:
                     with open(tape, 'wb') as fh:
                         pickle.dump(VCRSystem.playlist, fh, protocol=2)
