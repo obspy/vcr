@@ -83,6 +83,7 @@ class VCRSystem(object):
     debug = False
     disabled = False
     overwrite = False
+    playback_only = False
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
@@ -95,6 +96,7 @@ class VCRSystem(object):
         cls.debug = False
         cls.disabled = False
         cls.overwrite = False
+        cls.playback_only = False
         cls.recv_timeout = 5
         cls.recv_endmarkers = []
         cls.recv_size = None
@@ -463,7 +465,9 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 tape = os.path.join(path, '%s.%s.vcr' % (file_name, func_name))
 
             # check for tape file and determine mode
-            if not os.path.isfile(tape) or overwrite or VCRSystem.overwrite:
+            if not VCRSystem.playback_only and (
+                    not os.path.isfile(tape) or
+                    overwrite or VCRSystem.overwrite):
                 # remove existing tape
                 try:
                     os.remove(tape)
@@ -495,6 +499,10 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 if VCRSystem.debug:
                     print('\nVCR PLAYBACK (%s) ...' % (func_name))
                 VCRSystem.status = VCR_PLAYBACK
+                # if playback is requested and tape is missing: raise!
+                if not os.path.exists(tape):
+                    msg = 'Missing VCR tape file for playback: {}'.format(tape)
+                    raise Exception(msg)
                 # load playlist
                 with open(tape, 'rb') as fh:
                     VCRSystem.playlist = pickle.load(fh)
