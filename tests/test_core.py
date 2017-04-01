@@ -63,6 +63,24 @@ class CoreTestCase(unittest.TestCase):
             read_test()
             self.assertIn('VCR PLAYBACK', out.getvalue())
 
+    def test_playback_only(self):
+        # define decorated function without existing vcr tape
+        @vcr(debug=True, playback_only=True)
+        def temp_test():
+            r = urlopen('https://www.python.org/')
+            self.assertEqual(r.status, 200)
+
+        # .vcr file should not exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), False)
+
+        # run the test - playback mode but raises exception due to missing tape
+        with catch_stdout() as out:
+            self.assertRaises(IOError, temp_test)
+            self.assertIn('VCR PLAYBACK', out.getvalue())
+
+        # .vcr file should not exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), False)
+
     @skipIf(PY2, 'recording in PY2 is not supported')
     def test_record(self):
         # define function with @vcr decorator
@@ -279,6 +297,37 @@ class VCRSystemTestCase(unittest.TestCase):
         with catch_stdout() as out:
             read_test()
             self.assertIn('VCR PLAYBACK', out.getvalue())
+
+    @skipIf(PY2, 'recording in PY2 is not supported')
+    def test_playback_only(self):
+        # define decorated function without existing vcr tape
+        @vcr(debug=True)
+        def temp_test():
+            r = urlopen('https://www.python.org/')
+            self.assertEqual(r.status, 200)
+
+        # .vcr file should not exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), False)
+
+        # now enable playback_only mode
+        VCRSystem.playback_only = True
+        # run the test - playback mode but raises exception due to missing tape
+        with catch_stdout() as out:
+            self.assertRaises(IOError, temp_test)
+            self.assertIn('VCR PLAYBACK', out.getvalue())
+
+        # .vcr file should not exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), False)
+
+        # reset
+        VCRSystem.reset()
+        # re-run the test - now record mode without exception
+        with catch_stdout() as out:
+            temp_test()
+            self.assertIn('VCR RECORDING', out.getvalue())
+
+        # now .vcr file should exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), True)
 
 
 if __name__ == '__main__':

@@ -23,8 +23,7 @@ except ImportError:
 
 
 if PY2:
-    from StringIO import StringIO  # @UnresolvedImport
-    CaptureIO = StringIO
+    from StringIO import StringIO as CaptureIO  # @UnresolvedImport
 else:
     class CaptureIO(io.TextIOWrapper):
         def __init__(self):

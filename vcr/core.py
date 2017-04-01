@@ -68,6 +68,8 @@ class VCRSystem(object):
         Enables debug mode.
     ``overwrite`` : bool
         Will run vcr in recording mode - overwrites any existing vcrtapes.
+    ``playback_only`` : bool
+        Will run vcr in playback mode - will not create missing vcrtapes.
     ``disabled`` : bool
         Completely disables vcr - same effect as removing the decorator.
     ``recv_timeout`` : int
@@ -391,7 +393,7 @@ class VCRSSLSocket(VCRSocket):
 
 
 def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
-        tape_name=None):
+        playback_only=False, tape_name=None):
     """
     Decorator for capturing and simulating network communication
 
@@ -399,6 +401,8 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
         Enables debug mode.
     ``overwrite`` : bool, optional
         Will run vcr in recording mode - overwrites any existing vcrtapes.
+    ``playback_only`` : bool, optional
+        Will run vcr in playback mode - will not create missing vcrtapes.
     ``disabled`` : bool, optional
         Completely disables vcr - same effect as removing the decorator.
     ``tape_name`` : str, optional
@@ -465,7 +469,7 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 tape = os.path.join(path, '%s.%s.vcr' % (file_name, func_name))
 
             # check for tape file and determine mode
-            if not VCRSystem.playback_only and (
+            if not (playback_only or VCRSystem.playback_only) and (
                     not os.path.isfile(tape) or
                     overwrite or VCRSystem.overwrite):
                 # remove existing tape
@@ -502,7 +506,11 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 # if playback is requested and tape is missing: raise!
                 if not os.path.exists(tape):
                     msg = 'Missing VCR tape file for playback: {}'.format(tape)
-                    raise Exception(msg)
+                    # reset before raising
+                    if debug:
+                        VCRSystem.debug = system_debug
+                    VCRSystem.stop()
+                    raise IOError(msg)
                 # load playlist
                 with open(tape, 'rb') as fh:
                     VCRSystem.playlist = pickle.load(fh)
@@ -510,6 +518,9 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 try:
                     value = func(*args, **kwargs)
                 except Exception:
+                    # reset before raising
+                    if debug:
+                        VCRSystem.debug = system_debug
                     VCRSystem.stop()
                     raise
 
