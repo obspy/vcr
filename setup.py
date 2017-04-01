@@ -17,7 +17,7 @@ def vcr_test_suite():
 
 setup(
     name='vcr',
-    version='0.0.7',
+    version='0.0.8',
     description='VCR - decorator for capturing and simulating network ' +
                 'communication',
     long_description=readme,
