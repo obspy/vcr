@@ -8,6 +8,7 @@ from future.utils import PY2
 import os
 import unittest
 from unittest import skipIf
+import warnings
 
 from vcr import vcr, VCRSystem
 from vcr.utils import catch_stdout
@@ -328,6 +329,38 @@ class VCRSystemTestCase(unittest.TestCase):
 
         # now .vcr file should exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), True)
+
+    @skipIf(PY2, 'recording in PY2 is not supported')
+    def test_raise_if_not_needed(self):
+        # define decorated function without any socket activity - this either
+        # raises a UserWarning or Exception depending on raise_if_not_needed
+        # option
+        @vcr(debug=True)
+        def temp_test():
+            pass
+
+        # run the test - recording mode - raises a UserWarning (default)
+        with catch_stdout() as out:
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                temp_test()
+                self.assertIn('VCR RECORDING', out.getvalue())
+                self.assertIn('no socket activity', str(w[-1].message))
+                self.assertEquals(w[-1].category, UserWarning)
+
+        # .vcr file should not exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), False)
+
+        # now enable playback_only mode
+        VCRSystem.raise_if_not_needed = True
+
+        # re-run the test - recording mode - raises an Exception
+        with catch_stdout() as out:
+            self.assertRaises(Exception, temp_test)
+            self.assertIn('VCR RECORDING', out.getvalue())
+
+        # .vcr file should not exist
+        self.assertEqual(os.path.exists(self.temp_test_vcr), False)
 
 
 if __name__ == '__main__':

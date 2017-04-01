@@ -82,8 +82,8 @@ class VCRSystem(object):
         Will request given number of bytes in socket recv calls. Option is
         ignored if not set (default).
     ``raise_if_not_needed`` : bool
-        Raise if vcr decorator is not needed because no socket traffic is
-        recorded, instead of just showing a warning.
+        Raise an exception if vcr decorator is not needed because no socket
+        traffic has been recorded, instead of just showing a warning.
     """
     debug = False
     disabled = False
@@ -93,6 +93,7 @@ class VCRSystem(object):
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
+    __slots__ = ()
 
     @classmethod
     def reset(cls):
