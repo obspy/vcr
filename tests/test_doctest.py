@@ -13,6 +13,8 @@ def runTest(self):  # NOQA
     if '+VCR' in self._dt_test.docstring:
         return vcr(self._runTest)()
     return self._runTest()
+
+
 doctest.DocTestCase._runTest = doctest.DocTestCase.runTest
 doctest.DocTestCase.runTest = runTest
 doctest.register_optionflag('VCR')

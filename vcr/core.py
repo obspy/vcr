@@ -27,6 +27,7 @@ from future.builtins import *  # NOQA @UnusedWildImport
 from future.utils import PY2
 
 import copy
+import gzip
 import io
 import os
 import pickle
@@ -38,6 +39,7 @@ import telnetlib
 import tempfile
 import time
 import warnings
+
 
 from .utils import classproperty
 
@@ -505,7 +507,7 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                     else:
                         warnings.warn(msg)
                 else:
-                    with open(tape, 'wb') as fh:
+                    with gzip.open(tape, 'wb') as fh:
                         pickle.dump(VCRSystem.playlist, fh, protocol=2)
             else:
                 # playback mode
@@ -521,8 +523,13 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                     VCRSystem.stop()
                     raise IOError(msg)
                 # load playlist
-                with open(tape, 'rb') as fh:
-                    VCRSystem.playlist = pickle.load(fh)
+                try:
+                    with gzip.open(tape, 'rb') as fh:
+                        VCRSystem.playlist = pickle.load(fh)
+                except OSError:
+                    # support for older uncompressed tapes
+                    with open(tape, 'rb') as fh:
+                        VCRSystem.playlist = pickle.load(fh)
                 # execute decorated function
                 try:
                     value = func(*args, **kwargs)
