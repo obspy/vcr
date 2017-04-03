@@ -204,45 +204,54 @@ class VCRSystem(object):
         return cls.status == VCR_PLAYBACK
 
     @classmethod
-    def replay_next(cls, name, args, kwargs):
-        name_, args_, kwargs_, value_ = cls.playlist.pop(0)
+    def replay_next(cls, name_got, args_got, kwargs_got):
+        name_expected, args_expected, kwargs_expected, value_ = \
+            cls.playlist.pop(0)
         # XXX: py < 3.5 has sometimes two sendall calls ???
         if sys.version_info < (3, 5):
-            if name == 'makefile' and name_ == 'sendall':
-                name_, args_, kwargs_, value_ = cls.playlist.pop(0)
+            if name_got == 'makefile' and name_expected == 'sendall':
+                name_expected, args_expected, kwargs_expected, value_ = \
+                    cls.playlist.pop(0)
         if VCRSystem.debug:
-            print('  ', name, args, kwargs, ' | ', name_, args_, kwargs_,
-                  '->', value_)
+            print('  ', name_got, args_got, kwargs_got, ' | ',
+                  name_expected, args_expected, kwargs_expected, '->', value_)
         if cls.raise_outgoing_mismatch:
             # XXX TODO put this into a constant up top!?
-            if name not in ('recv', 'makefile'):
+            if name_got not in ('recv', 'makefile'):
                 # XXX it seems that on Python 2 some 'sendall's for HTTP POST
                 # are distributed over two calls, concatenate them here for the
                 # check..
                 # lookahead to next playlist item
-                if (name == 'sendall' and args and len(args) == 1 and
-                        args[0].startswith(b'POST ') and
-                        args_[0].endswith(b'\r\n\r\n') and
-                        not args[0].endswith(b'\r\n\r\n') and
+                if (name_got == 'sendall' and args_got and
+                        len(args_got) == 1 and
+                        args_got[0].startswith(b'POST ') and
+                        args_expected[0].endswith(b'\r\n\r\n') and
+                        not args_got[0].endswith(b'\r\n\r\n') and
                         cls.playlist):
                     _next_name, _next_args, _next_kwargs, _ = cls.playlist[0]
                     if (_next_name == 'sendall' and len(_next_args) == 1 and
-                            _next_kwargs == kwargs):
-                        args_ = tuple([args_[0] + _next_args[0]])
+                            _next_kwargs == kwargs_got):
+                        args_expected = tuple(
+                            [args_expected[0] + _next_args[0]])
                         cls.playlist.pop(0)
                 if VCRSystem.debug:
-                    print('  checking: ', name, args, kwargs, ' | ',
-                          name_, args_, kwargs_)
+                    print('  checking: ', name_got, args_got, kwargs_got,
+                          ' | ', name_expected, args_expected, kwargs_expected)
                 # apply all normalization functions
                 for norm_func in VCRSystem.outgoing_check_normalizations:
-                    name, args, kwargs = norm_func(name, args, kwargs)
-                    name_, args_, kwargs_ = norm_func(name_, args_, kwargs_)
+                    name_got, args_got, kwargs_got = norm_func(
+                        name_got, args_got, kwargs_got)
+                    name_expected, args_expected, kwargs_expected = norm_func(
+                        name_expected, args_expected, kwargs_expected)
                 if VCRSystem.debug:
-                    print('  checking, after normalization: ', name, args,
-                          kwargs, ' | ', name_, args_, kwargs_)
-                if (name_, args_, kwargs_) != (name, args, kwargs):
+                    print('  checking, after normalization: ', name_got,
+                          args_got, kwargs_got, ' | ', name_expected,
+                          args_expected, kwargs_expected)
+                if (name_expected, args_expected, kwargs_expected) != \
+                        (name_got, args_got, kwargs_got):
                     msg = '\nExpected: {} {} {}\nGot:      {} {} {}'.format(
-                        name_, args_, kwargs_, name, args, kwargs)
+                        name_expected, args_expected, kwargs_expected,
+                        name_got, args_got, kwargs_got)
                     VCRSystem.stop()
                     raise VCRPlaybackOutgoingTrafficMismatch(msg)
         return value_
