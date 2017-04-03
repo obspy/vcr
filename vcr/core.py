@@ -216,6 +216,20 @@ class VCRSystem(object):
         if cls.raise_outgoing_mismatch:
             # XXX TODO put this into a constant up top!?
             if name not in ('recv', 'makefile'):
+                # XXX it seems that on Python 2 some 'sendall's for HTTP POST
+                # are distributed over two calls, concatenate them here for the
+                # check..
+                # lookahead to next playlist item
+                if (name == 'sendall' and args and len(args) == 1 and
+                        args[0].startswith(b'POST ') and
+                        args_[0].endswith(b'\r\n\r\n') and
+                        not args[0].endswith(b'\r\n\r\n') and
+                        cls.playlist):
+                    _next_name, _next_args, _next_kwargs, _ = cls.playlist[0]
+                    if (_next_name == 'sendall' and len(_next_args) == 1 and
+                            _next_kwargs == kwargs):
+                        args_ = tuple([args_[0] + _next_args[0]])
+                        cls.playlist.pop(0)
                 if VCRSystem.debug:
                     print('  checking: ', name, args, kwargs, ' | ',
                           name_, args_, kwargs_)
