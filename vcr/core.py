@@ -37,7 +37,7 @@ import tempfile
 import time
 import warnings
 
-from .utils import classproperty, PY2
+from .utils import classproperty, PY2, get_source_code_sha256
 
 
 VCR_RECORD = 0
@@ -73,6 +73,14 @@ class VCRPlaybackOutgoingTrafficMismatch(VCRPlaybackError):
     pass
 
 
+class VCRPlaybackSourceCodeChangedError(VCRPlaybackError):
+    """
+    Exception that gets raised if the executed source code has changed since
+    recording the VCR tape and at the time of playback.
+    """
+    pass
+
+
 class VCRSystem(object):
     """
     Use this class to overwrite default settings on global scale
@@ -102,6 +110,9 @@ class VCRSystem(object):
     ``raise_if_not_needed`` : bool
         Raise an exception if vcr decorator is not needed because no socket
         traffic has been recorded, instead of just showing a warning.
+    ``raise_if_source_code_changed`` : bool
+        Raise an exception if the to be executed source code has changed since
+        recoring the VCR tape.
     ``raise_outgoing_mismatch`` : bool
         Raise an exception if outgoing traffic encountered during playback is
         not matching pre-recorded traffic in VCR tape.
@@ -118,6 +129,7 @@ class VCRSystem(object):
     overwrite = False
     playback_only = False
     raise_if_not_needed = False
+    raise_if_source_code_changed = True
     raise_outgoing_mismatch = True
     outgoing_check_normalizations = []
     recv_timeout = 5
@@ -559,6 +571,9 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                         else:
                             warnings.warn(msg)
                     else:
+                        # add source code hash as first item in playlist
+                        sha256 = get_source_code_sha256(func)
+                        VCRSystem.playlist.insert(0, sha256)
                         # remove existing tape
                         try:
                             os.remove(tape)
@@ -586,9 +601,21 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                             VCRSystem.playlist = pickle.load(fh)
                     if VCRSystem.debug:
                         print('Loaded playlist:')
-                        for i, item in enumerate(VCRSystem.playlist):
+                        print('SHA256: {}'.format(VCRSystem.playlist[0]))
+                        for i, item in enumerate(VCRSystem.playlist[1:]):
                             print('{:3d}: {} {} {}'.format(i, *item))
                         print()
+                    # check if source code has changed
+                    sha256_playlist = VCRSystem.playlist.pop(0)
+                    if VCRSystem.raise_if_source_code_changed:
+                        sha256 = get_source_code_sha256(func)
+                        if sha256 != sha256_playlist:
+                            msg = ('Source code of test routine has changed '
+                                   'since time when VCR tape was recorded '
+                                   '(file: {}).').format(tape)
+                            raise VCRPlaybackSourceCodeChangedError(msg)
+                        if VCRSystem.debug:
+                            print('SHA256 sum of source code matches playlist')
                     # execute decorated function
                     value = func(*args, **kwargs)
 

@@ -2,6 +2,8 @@
 from __future__ import absolute_import, division, print_function
 
 from contextlib import contextmanager
+import hashlib
+import inspect
 import io
 import sys
 import unittest
@@ -55,3 +57,21 @@ def skip_if_py2(func):
             raise unittest.SkipTest('recording in PY2 is not supported')
         return func(*args, **kwargs)
     return wrapper
+
+
+def get_source_code_sha256(func):
+    """
+    Lookup source code of unittest test method or doctest and
+    calculate SHA256 hash.
+    """
+    if not inspect.isfunction(func) and not inspect.ismethod(func):
+        raise TypeError()
+    # doctest
+    if func.__module__ == 'doctest':
+        source_code = ''.join(example.source for example in
+                              func.__self__._dt_test.examples)
+    # unittest test method
+    else:
+        source_code = ''.join(inspect.getsourcelines(func)[0])
+    source_code = source_code.encode('UTF-8')
+    return hashlib.sha256(source_code).hexdigest()
