@@ -615,13 +615,8 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                         msg = 'Missing VCR tape file for playback: {}'
                         raise IOError(msg.format(tape))
                     # load playlist
-                    try:
-                        with gzip.open(tape, 'rb') as fh:
-                            VCRSystem.playlist = pickle.load(fh)
-                    except OSError:
-                        # support for older uncompressed tapes
-                        with open(tape, 'rb') as fh:
-                            VCRSystem.playlist = pickle.load(fh)
+                    with gzip.open(tape, 'rb') as fh:
+                        VCRSystem.playlist = pickle.load(fh)
                     if VCRSystem.debug:
                         print('Loaded playlist:')
                         print('SHA256: {}'.format(VCRSystem.playlist[0]))
