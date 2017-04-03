@@ -105,6 +105,13 @@ class VCRSystem(object):
     ``raise_outgoing_mismatch`` : bool
         Raise an exception if outgoing traffic encountered during playback is
         not matching pre-recorded traffic in VCR tape.
+    ``outgoing_check_normalizations`` : list
+        List of functions that normalize outgoing traffic (both actually
+        encountered and pre-recorded) before checking for equality of
+        encountered and pre-recorded. Each function in the list will be applied
+        to outgoing traffic and should have a call syntax of
+        ``def custom_normalization(name, args, kwargs)`` and return a list of
+        potentially modified ``name, args, kwargs``.
     """
     debug = False
     disabled = False
@@ -112,6 +119,7 @@ class VCRSystem(object):
     playback_only = False
     raise_if_not_needed = False
     raise_outgoing_mismatch = True
+    outgoing_check_normalizations = []
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
@@ -196,24 +204,13 @@ class VCRSystem(object):
         if cls.raise_outgoing_mismatch:
             # XXX TODO put this into a constant up top!?
             if name not in ('recv', 'makefile'):
-                # XXX TODO make outgoing traffic normalizing routines a class
-                # XXX TODO property set is set in the project using vcr
-                def normalize(name, args, kwargs):
-                    if name != 'sendall':
-                        return name, args, kwargs
-                    import re
-                    pattern = (
-                        b'User-Agent: ObsPy\\/.*? \\(.*?, Python [0-9\.]*\\)')
-                    repl = b'User-Agent: ObsPy (test suite)'
-                    args = tuple([re.sub(pattern, repl, args[0], count=1)])
-                    return name, args, kwargs
-                # XXX TODO make normalize a list of normalizing functions that
-                # XXX TODO are applied to traffic during playback checks
                 if VCRSystem.debug:
                     print('  checking: ', name, args, kwargs, ' | ',
                           name_, args_, kwargs_)
-                name, args, kwargs = normalize(name, args, kwargs)
-                name_, args_, kwargs_ = normalize(name_, args_, kwargs_)
+                # apply all normalization functions
+                for norm_func in VCRSystem.outgoing_check_normalizations:
+                    name, args, kwargs = norm_func(name, args, kwargs)
+                    name_, args_, kwargs_ = norm_func(name_, args_, kwargs_)
                 if VCRSystem.debug:
                     print('  checking, after normalization: ', name, args,
                           kwargs, ' | ', name_, args_, kwargs_)
