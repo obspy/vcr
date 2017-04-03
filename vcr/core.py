@@ -179,6 +179,18 @@ class VCRSystem(object):
     def is_playing(cls):  # @NoSelf
         return cls.status == VCR_PLAYBACK
 
+    @classmethod
+    def replay_next(cls, name, args, kwargs):
+        name_, args_, kwargs_, value_ = cls.playlist.pop(0)
+        # XXX: py < 3.5 has sometimes two sendall calls ???
+        if sys.version_info < (3, 5):
+            if name == 'makefile' and name_ == 'sendall':
+                name_, args_, kwargs_, value_ = cls.playlist.pop(0)
+        if VCRSystem.debug:
+            print('  ', name, args, kwargs, ' | ', name_, args_, kwargs_,
+                  '->', value_)
+        return value_
+
 
 def vcr_getaddrinfo(*args, **kwargs):
     if VCRSystem.status == VCR_RECORD:
@@ -191,12 +203,7 @@ def vcr_getaddrinfo(*args, **kwargs):
         return value
     else:
         # playback mode
-        data = VCRSystem.playlist.pop(0)
-        value = data[3]
-        if VCRSystem.debug:
-            print('  ', 'getaddrinfo', args, kwargs, ' | ', data[0:3],
-                  '->', value)
-        return value
+        return VCRSystem.replay_next('getaddrinfo', args, kwargs)
 
 
 def vcr_select_epoll():
@@ -332,16 +339,8 @@ class VCRSocket(object):
             return value
         else:
             # playback mode
-            # get first element in playlist
-            data = VCRSystem.playlist.pop(0)
-            # XXX: py < 3.5 has sometimes two sendall calls ???
-            if sys.version_info < (3, 5) and name == 'makefile' and \
-               data[0] == 'sendall':
-                data = VCRSystem.playlist.pop(0)
-            value = data[3]
-            if VCRSystem.debug:
-                print('  ', name, args, kwargs, ' | ', data[0:3], '->', value)
-            return value
+            # get next element in playlist
+            return VCRSystem.replay_next(name, args, kwargs)
 
     def __nonzero__(self):
         return bool(self.__dict__.get('_orig_socket', True))
