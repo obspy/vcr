@@ -102,12 +102,16 @@ class VCRSystem(object):
     ``raise_if_not_needed`` : bool
         Raise an exception if vcr decorator is not needed because no socket
         traffic has been recorded, instead of just showing a warning.
+    ``raise_outgoing_mismatch`` : bool
+        Raise an exception if outgoing traffic encountered during playback is
+        not matching pre-recorded traffic in VCR tape.
     """
     debug = False
     disabled = False
     overwrite = False
     playback_only = False
     raise_if_not_needed = False
+    raise_outgoing_mismatch = True
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
@@ -189,6 +193,35 @@ class VCRSystem(object):
         if VCRSystem.debug:
             print('  ', name, args, kwargs, ' | ', name_, args_, kwargs_,
                   '->', value_)
+        if cls.raise_outgoing_mismatch:
+            # XXX TODO put this into a constant up top!?
+            if name not in ('recv', 'makefile'):
+                # XXX TODO make outgoing traffic normalizing routines a class
+                # XXX TODO property set is set in the project using vcr
+                def normalize(name, args, kwargs):
+                    if name != 'sendall':
+                        return name, args, kwargs
+                    import re
+                    pattern = (
+                        b'User-Agent: ObsPy\\/.*? \\(.*?, Python [0-9\.]*\\)')
+                    repl = b'User-Agent: ObsPy (test suite)'
+                    args = tuple([re.sub(pattern, repl, args[0], count=1)])
+                    return name, args, kwargs
+                # XXX TODO make normalize a list of normalizing functions that
+                # XXX TODO are applied to traffic during playback checks
+                if VCRSystem.debug:
+                    print('  checking: ', name, args, kwargs, ' | ',
+                          name_, args_, kwargs_)
+                name, args, kwargs = normalize(name, args, kwargs)
+                name_, args_, kwargs_ = normalize(name_, args_, kwargs_)
+                if VCRSystem.debug:
+                    print('  checking, after normalization: ', name, args,
+                          kwargs, ' | ', name_, args_, kwargs_)
+                if (name_, args_, kwargs_) != (name, args, kwargs):
+                    msg = '\nExpected: {} {} {}\nGot:      {} {} {}'.format(
+                        name_, args_, kwargs_, name, args, kwargs)
+                    VCRSystem.stop()
+                    raise VCRPlaybackOutgoingTrafficMismatch(msg)
         return value_
 
 
