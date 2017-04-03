@@ -53,6 +53,26 @@ if hasattr(select, 'epoll'):
     orig_select_epoll = select.epoll
 
 
+class VCRException(Exception):
+    pass
+
+
+class VCRRecordingError(VCRException):
+    pass
+
+
+class VCRPlaybackError(VCRException):
+    pass
+
+
+class VCRPlaybackOutgoingTrafficMismatch(VCRPlaybackError):
+    """
+    Exception that gets raised if the intercepted outgoing traffic on playback
+    is not matching the outgoing traffic during recording the VCR tape.
+    """
+    pass
+
+
 class VCRSystem(object):
     """
     Use this class to overwrite default settings on global scale
