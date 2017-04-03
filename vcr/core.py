@@ -479,11 +479,6 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
             if not (playback_only or VCRSystem.playback_only) and (
                     not os.path.isfile(tape) or
                     overwrite or VCRSystem.overwrite):
-                # remove existing tape
-                try:
-                    os.remove(tape)
-                except OSError:
-                    pass
                 # record mode
                 if PY2:
                     msg = 'VCR records only in PY3 to be backward ' + \
@@ -507,6 +502,11 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                     else:
                         warnings.warn(msg)
                 else:
+                    # remove existing tape
+                    try:
+                        os.remove(tape)
+                    except OSError:
+                        pass
                     with gzip.open(tape, 'wb') as fh:
                         pickle.dump(VCRSystem.playlist, fh, protocol=2)
             else:
