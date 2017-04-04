@@ -166,9 +166,13 @@ class VCRSystem(object):
         cls.recv_size = None
 
     @classmethod
+    def clear_playlist(cls):
+        cls.playlist = []
+
+    @classmethod
     def start(cls):
         # reset
-        cls.playlist = []
+        cls.clear_playlist()
         cls.status = VCR_RECORD
         # apply monkey patches
         socket.socket = VCRSocket
@@ -192,7 +196,7 @@ class VCRSystem(object):
             select.select = orig_select_select
             telnetlib.Telnet.read_until = orig_read_until
         # reset
-        cls.playlist = []
+        cls.clear_playlist()
         cls.status = VCR_RECORD
 
     @classproperty
@@ -212,7 +216,7 @@ class VCRSystem(object):
             if name_got == 'makefile' and name_expected == 'sendall':
                 name_expected, args_expected, kwargs_expected, value_ = \
                     cls.playlist.pop(0)
-        if VCRSystem.debug:
+        if cls.debug:
             print('  ', name_got, args_got, kwargs_got, ' | ',
                   name_expected, args_expected, kwargs_expected, '->', value_)
         if cls.raise_outgoing_mismatch:
@@ -234,16 +238,16 @@ class VCRSystem(object):
                         args_expected = tuple(
                             [args_expected[0] + _next_args[0]])
                         cls.playlist.pop(0)
-                if VCRSystem.debug:
+                if cls.debug:
                     print('  checking: ', name_got, args_got, kwargs_got,
                           ' | ', name_expected, args_expected, kwargs_expected)
                 # apply all normalization functions
-                for norm_func in VCRSystem.outgoing_check_normalizations:
+                for norm_func in cls.outgoing_check_normalizations:
                     name_got, args_got, kwargs_got = norm_func(
                         name_got, args_got, kwargs_got)
                     name_expected, args_expected, kwargs_expected = norm_func(
                         name_expected, args_expected, kwargs_expected)
-                if VCRSystem.debug:
+                if cls.debug:
                     print('  checking, after normalization: ', name_got,
                           args_got, kwargs_got, ' | ', name_expected,
                           args_expected, kwargs_expected)
@@ -252,7 +256,7 @@ class VCRSystem(object):
                     msg = '\nExpected: {} {} {}\nGot:      {} {} {}'.format(
                         name_expected, args_expected, kwargs_expected,
                         name_got, args_got, kwargs_got)
-                    VCRSystem.stop()
+                    cls.clear_playlist()
                     raise VCRPlaybackOutgoingTrafficMismatch(msg)
         return value_
 
