@@ -81,7 +81,7 @@ details.
 
 .. |TravisCI Status| image:: https://travis-ci.org/obspy/vcr.svg?branch=master
    :target: https://travis-ci.org/obspy/vcr?branch=master
-.. |AppVeyor Status| image:: https://ci.appveyor.com/api/projects/status/cbkyij3rcshvihuf?svg=true
+.. |AppVeyor Status| image:: https://ci.appveyor.com/api/projects/status/cbkyij3rcshvihuf?svg=true&branch=master
    :target: https://ci.appveyor.com/project/obspy/vcr
 .. |PyPI| image:: https://img.shields.io/pypi/v/vcr.svg
    :target: https://pypi.python.org/pypi/vcr
