@@ -17,6 +17,9 @@ from vcr.utils import catch_stdout
 with hooks():
     from urllib.request import urlopen
 
+if PY2:
+    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+
 
 class CoreTestCase(unittest.TestCase):
     """
