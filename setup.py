@@ -28,7 +28,7 @@ setup(
     license="GNU Lesser General Public License",
     packages=find_packages(exclude=('tests', 'docs')),
     test_suite='setup.vcr_test_suite',
-    setup_requires=['future'],
+    setup_requires=[],
     tests_require=['requests'],
     platforms='OS Independent',
     classifiers=[

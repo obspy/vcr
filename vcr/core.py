@@ -21,10 +21,7 @@ Inspired by:
     GNU Lesser General Public License, Version 3
     (https://www.gnu.org/copyleft/lesser.html)
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-from future.builtins import *  # NOQA @UnusedWildImport
-from future.utils import PY2
+from __future__ import absolute_import, division, print_function
 
 import copy
 import gzip
@@ -40,8 +37,7 @@ import tempfile
 import time
 import warnings
 
-
-from .utils import classproperty
+from .utils import classproperty, PY2
 
 
 VCR_RECORD = 0

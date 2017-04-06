@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-from future.builtins import *  # NOQA @UnusedWildImport
-from future.utils import PY2
+from __future__ import absolute_import, division, print_function
 
 from contextlib import contextmanager
 import io
 import sys
+import unittest
 
 
 try:
@@ -22,9 +20,14 @@ except ImportError:
             sys.stdout = old_target
 
 
-if PY2:
+try:
+    # PY2
+    PY2 = True
     from StringIO import StringIO as CaptureIO  # @UnresolvedImport
-else:
+except ImportError:
+    # PY3
+    PY2 = False
+
     class CaptureIO(io.TextIOWrapper):
         def __init__(self):
             super(CaptureIO, self).__init__(io.BytesIO(), encoding='UTF-8',
@@ -44,3 +47,11 @@ class classproperty(object):
 
     def __get__(self, _owner_self, owner_cls):
         return self.fget(owner_cls)
+
+
+def skip_if_py2(func):
+    def wrapper(*args, **kwargs):
+        if PY2:
+            raise unittest.SkipTest('recording in PY2 is not supported')
+        return func(*args, **kwargs)
+    return wrapper

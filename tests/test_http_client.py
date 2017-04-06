@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-from future.builtins import *  # NOQA @UnusedWildImport
-from future.standard_library import hooks
+from __future__ import absolute_import, division, print_function
 
 import unittest
 
 from vcr import vcr
 
-with hooks():
-    import urllib.parse
-    import http.client
+try:
+    # Py3
+    from urllib.parse import urlencode
+    from http.client import HTTPConnection, HTTPSConnection
+except ImportError:
+    # Py2
+    from urllib import urlencode
+    from httplib import HTTPConnection, HTTPSConnection
 
 
 class RequestsTestCase(unittest.TestCase):
@@ -19,7 +21,7 @@ class RequestsTestCase(unittest.TestCase):
     """
     def test_connectivity(self):
         # basic network connection test to exclude network issues
-        conn = http.client.HTTPSConnection("www.python.org")
+        conn = HTTPSConnection("www.python.org")
         conn.request("GET", "/")
         response = conn.getresponse()
         self.assertEqual(response.status, 200)
@@ -28,7 +30,7 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_get(self):
-        conn = http.client.HTTPConnection("www.python.org")
+        conn = HTTPConnection("www.python.org")
         conn.request("GET", "/")
         response = conn.getresponse()
         self.assertEqual(response.status, 301)
@@ -38,7 +40,7 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_get_invalid(self):
-        conn = http.client.HTTPConnection("httpstat.us")
+        conn = HTTPConnection("httpstat.us")
         conn.request("GET", "/404")
         response = conn.getresponse()
         self.assertEqual(response.status, 404)
@@ -47,7 +49,7 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_https_get(self):
-        conn = http.client.HTTPSConnection("www.python.org")
+        conn = HTTPSConnection("www.python.org")
         conn.request("GET", "/")
         response = conn.getresponse()
         self.assertEqual(response.status, 200)
@@ -56,7 +58,7 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_https_head(self):
-        conn = http.client.HTTPSConnection("www.python.org")
+        conn = HTTPSConnection("www.python.org")
         conn.request("HEAD", "/")
         response = conn.getresponse()
         self.assertEqual(response.status, 200)
@@ -68,7 +70,7 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_redirect_to_https(self):
-        conn = http.client.HTTPSConnection("obspy.org")
+        conn = HTTPSConnection("obspy.org")
         conn.request("GET", "/")
         response = conn.getresponse()
         self.assertEqual(response.status, 302)
@@ -77,11 +79,11 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_post(self):
-        params = urllib.parse.urlencode({'@number': 12524, '@type': 'issue',
-                                         '@action': 'show'})
+        params = urlencode({'@number': 12524, '@type': 'issue',
+                            '@action': 'show'})
         headers = {"Content-type": "application/x-www-form-urlencoded",
                    "Accept": "text/plain"}
-        conn = http.client.HTTPConnection("bugs.python.org")
+        conn = HTTPConnection("bugs.python.org")
         conn.request("POST", "", params, headers)
         response = conn.getresponse()
         self.assertEqual(response.status, 302)
