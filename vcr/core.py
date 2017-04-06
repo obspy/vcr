@@ -304,9 +304,6 @@ class VCRSocket(object):
                 VCRSystem.playlist.append((name, args, kwargs, temp))
                 # return new copy of BytesIO as it may get closed
                 return copy.copy(temp)
-            if VCRSystem.debug:
-                # test if value is pickleable - will raise exception
-                pickle.dumps(value)
             # add to playlist
             VCRSystem.playlist.append((name, args, kwargs, copy.copy(value)))
             return value
