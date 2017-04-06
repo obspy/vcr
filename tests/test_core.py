@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-from future.builtins import *  # NOQA @UnusedWildImport
-from future.standard_library import hooks
-from future.utils import PY2
+from __future__ import absolute_import, division, print_function
 
 import os
 import unittest
-from unittest import skipIf
 import warnings
 
 from vcr import vcr, VCRSystem
-from vcr.utils import catch_stdout
+from vcr.utils import catch_stdout, skip_if_py2
 
-
-with hooks():
-    from urllib.request import urlopen
-
-if PY2:
+try:
+    # Py2
+    from urllib2 import urlopen
+    # add assertRaisesRegex (assertRaisesRegexp is deprecated in Py3)
     unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+except ImportError:
+    # Py3
+    from urllib.request import urlopen
 
 
 class CoreTestCase(unittest.TestCase):
@@ -41,14 +38,14 @@ class CoreTestCase(unittest.TestCase):
     def test_connectivity(self):
         # basic network connection test to exclude network issues
         r = urlopen('https://www.python.org/')
-        self.assertEqual(r.status, 200)
+        self.assertEqual(r.code, 200)
 
     def test_playback(self):
         # define function with decorator
         @vcr
         def read_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run the test
         with catch_stdout() as out:
@@ -60,7 +57,7 @@ class CoreTestCase(unittest.TestCase):
         @vcr(debug=True)
         def read_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run the test
         with catch_stdout() as out:
@@ -72,7 +69,7 @@ class CoreTestCase(unittest.TestCase):
         @vcr(debug=True, playback_only=True)
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # .vcr file should not exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), False)
@@ -86,13 +83,13 @@ class CoreTestCase(unittest.TestCase):
         # .vcr file should not exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), False)
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_record(self):
         # define function with @vcr decorator
         @vcr
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # .vcr file should not exist at the moment
         self.assertEqual(os.path.exists(self.temp_test_vcr), False)
@@ -105,13 +102,13 @@ class CoreTestCase(unittest.TestCase):
         # .vcr file should now exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), True)
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_record_with_debug(self):
         # define function with @vcr decorator
         @vcr(debug=True)
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # .vcr file should not exist at the moment
         self.assertEqual(os.path.exists(self.temp_test_vcr), False)
@@ -124,13 +121,13 @@ class CoreTestCase(unittest.TestCase):
         # .vcr file should now exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), True)
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_life_cycle(self):
         # define function with @vcr decorator and enable debug mode
         @vcr(debug=True)
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # an initial run of our little test will start in recording mode
         # and auto-generate a .vcr file - however, this file shouldn't exist at
@@ -152,13 +149,13 @@ class CoreTestCase(unittest.TestCase):
             # debug mode should state its in playback mode
             self.assertIn('VCR PLAYBACK', out.getvalue())
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_overwrite_true(self):
         # overwrite=True will delete a existing tape and create a new file
         @vcr(overwrite=True)
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run it once
         temp_test()
@@ -168,13 +165,13 @@ class CoreTestCase(unittest.TestCase):
         temp_test()
         self.assertTrue(os.path.getmtime(self.temp_test_vcr) > mtime)
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_overwrite_false(self):
         # overwrite=False is default behaviour
         @vcr(overwrite=False)
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run it once
         temp_test()
@@ -185,12 +182,12 @@ class CoreTestCase(unittest.TestCase):
         # mtime didn't change as the file has not been overwritten
         self.assertEqual(os.path.getmtime(self.temp_test_vcr), mtime)
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_tape_name(self):
         @vcr(tape_name='test_core.temp_test.vcr')
         def custom_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # tape file should not exists beforehand
         self.assertFalse(os.path.exists(self.temp_test_vcr))
@@ -225,7 +222,7 @@ class VCRSystemTestCase(unittest.TestCase):
         @vcr
         def read_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run the test - there should be no output
         with catch_stdout() as out:
@@ -246,13 +243,13 @@ class VCRSystemTestCase(unittest.TestCase):
             read_test()
             self.assertEqual(out.getvalue(), '')
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_overwrite(self):
         # no overwrite setting in decorator level
         @vcr
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run it once
         temp_test()
@@ -286,7 +283,7 @@ class VCRSystemTestCase(unittest.TestCase):
         @vcr(debug=True)
         def read_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # run the test - there should be output due to debug
         with catch_stdout() as out:
@@ -307,13 +304,13 @@ class VCRSystemTestCase(unittest.TestCase):
             read_test()
             self.assertIn('VCR PLAYBACK', out.getvalue())
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_playback_only(self):
         # define decorated function without existing vcr tape
         @vcr(debug=True)
         def temp_test():
             r = urlopen('https://www.python.org/')
-            self.assertEqual(r.status, 200)
+            self.assertEqual(r.code, 200)
 
         # .vcr file should not exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), False)
@@ -339,7 +336,7 @@ class VCRSystemTestCase(unittest.TestCase):
         # now .vcr file should exist
         self.assertEqual(os.path.exists(self.temp_test_vcr), True)
 
-    @skipIf(PY2, 'recording in PY2 is not supported')
+    @skip_if_py2
     def test_raise_if_not_needed(self):
         # define decorated function without any socket activity - this either
         # raises a UserWarning or Exception depending on raise_if_not_needed
