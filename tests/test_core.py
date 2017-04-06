@@ -76,7 +76,8 @@ class CoreTestCase(unittest.TestCase):
 
         # run the test - playback mode but raises exception due to missing tape
         with catch_stdout() as out:
-            self.assertRaises(IOError, temp_test)
+            with self.assertRaisesRegex(IOError, "Missing VCR tape file"):
+                temp_test()
             self.assertIn('VCR PLAYBACK', out.getvalue())
 
         # .vcr file should not exist
@@ -314,7 +315,8 @@ class VCRSystemTestCase(unittest.TestCase):
         VCRSystem.playback_only = True
         # run the test - playback mode but raises exception due to missing tape
         with catch_stdout() as out:
-            self.assertRaises(IOError, temp_test)
+            with self.assertRaisesRegex(IOError, "Missing VCR tape file"):
+                temp_test()
             self.assertIn('VCR PLAYBACK', out.getvalue())
 
         # .vcr file should not exist
@@ -356,7 +358,8 @@ class VCRSystemTestCase(unittest.TestCase):
 
         # re-run the test - recording mode - raises an Exception
         with catch_stdout() as out:
-            self.assertRaises(Exception, temp_test)
+            with self.assertRaisesRegex(Exception, 'no socket activity'):
+                temp_test()
             self.assertIn('VCR RECORDING', out.getvalue())
 
         # .vcr file should not exist
