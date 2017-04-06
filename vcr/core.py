@@ -539,6 +539,11 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                         # support for older uncompressed tapes
                         with open(tape, 'rb') as fh:
                             VCRSystem.playlist = pickle.load(fh)
+                    if VCRSystem.debug:
+                        print('Loaded playlist:')
+                        for i, item in enumerate(VCRSystem.playlist):
+                            print('{:3d}: {} {} {}'.format(i, *item))
+                        print()
                     # execute decorated function
                     value = func(*args, **kwargs)
 
