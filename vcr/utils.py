@@ -72,6 +72,7 @@ def get_source_code_sha256(func):
                               func.__self__._dt_test.examples)
     # unittest test method
     else:
-        source_code = ''.join(inspect.getsourcelines(func)[0])
+        # omit first line, which is the @vcr decorator line
+        source_code = ''.join(inspect.getsourcelines(func)[0][1:])
     source_code = source_code.encode('UTF-8')
     return hashlib.sha256(source_code).hexdigest()
