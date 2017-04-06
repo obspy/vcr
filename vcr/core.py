@@ -428,12 +428,6 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 # execute decorated function without VCR
                 return func(*args, **kwargs)
 
-            # enable VCR
-            if debug:
-                system_debug = VCRSystem.debug
-                VCRSystem.debug = True
-            VCRSystem.start()
-
             # prepare VCR tape
             if func.__module__ == 'doctest':
                 source_filename = func.__self__._dt_test.filename
@@ -475,6 +469,12 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 # auto-generated file name
                 tape = os.path.join(path, '%s.%s.vcr' % (file_name, func_name))
 
+            # enable VCR
+            if debug:
+                system_debug = VCRSystem.debug
+                VCRSystem.debug = True
+            VCRSystem.start()
+
             # check for tape file and determine mode
             if not (playback_only or VCRSystem.playback_only) and (
                     not os.path.isfile(tape) or
@@ -493,7 +493,7 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 VCRSystem.status = VCR_RECORD
                 # execute decorated function
                 value = func(*args, **kwargs)
-                # write to file
+                # check if vcr is actually used at all
                 if len(VCRSystem.playlist) == 0:
                     msg = 'no socket activity - @vcr decorator unneeded for %s'
                     msg = msg % func.__name__
@@ -507,6 +507,7 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                         os.remove(tape)
                     except OSError:
                         pass
+                    # write playlist to file
                     with gzip.open(tape, 'wb') as fh:
                         pickle.dump(VCRSystem.playlist, fh, protocol=2)
             else:
