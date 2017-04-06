@@ -40,7 +40,7 @@ class FTPLibTestCase(unittest.TestCase):
 
     @vcr(disabled=True)
     def test_ftp_tls(self):
-        with catch_stdout() as out:
+        with catch_stdout():
             ftps = ftplib.FTP_TLS('ftp.pureftpd.org')
         resp = ftps.login()
         self.assertEqual(resp, '230 Anonymous user logged in')
