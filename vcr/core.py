@@ -95,7 +95,22 @@ class VCRSystem(object):
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
-    __slots__ = ()
+
+    def __init__(self, debug=False):
+        self._debug = debug
+
+    def __enter__(self):
+        # enable VCR
+        if self._debug:
+            self._system_debug = VCRSystem.debug
+            VCRSystem.debug = True
+        VCRSystem.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):  # @UnusedVariable
+        # disable VCR
+        if self._debug:
+            VCRSystem.debug = self._system_debug
+        VCRSystem.stop()
 
     @classmethod
     def reset(cls):
@@ -470,85 +485,62 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                 tape = os.path.join(path, '%s.%s.vcr' % (file_name, func_name))
 
             # enable VCR
-            if debug:
-                system_debug = VCRSystem.debug
-                VCRSystem.debug = True
-            VCRSystem.start()
-
-            # check for tape file and determine mode
-            if not (playback_only or VCRSystem.playback_only) and (
-                    not os.path.isfile(tape) or
-                    overwrite or VCRSystem.overwrite):
-                # record mode
-                if PY2:
-                    msg = 'VCR records only in PY3 to be backward ' + \
-                          'compatible with PY2 - skipping VCR mechanics for %s'
-                    warnings.warn(msg % (func.__name__))
-                    # disable VCR
-                    VCRSystem.stop()
-                    # execute decorated function without VCR
-                    return func(*args, **kwargs)
-                if VCRSystem.debug:
-                    print('\nVCR RECORDING (%s) ...' % (func_name))
-                VCRSystem.status = VCR_RECORD
-                # execute decorated function
-                value = func(*args, **kwargs)
-                # check if vcr is actually used at all
-                if len(VCRSystem.playlist) == 0:
-                    msg = 'no socket activity - @vcr decorator unneeded for %s'
-                    msg = msg % func.__name__
-                    if VCRSystem.raise_if_not_needed:
-                        # reset before raising
-                        if debug:
-                            VCRSystem.debug = system_debug
+            with VCRSystem(debug=debug):
+                # check for tape file and determine mode
+                if not (playback_only or VCRSystem.playback_only) and (
+                        not os.path.isfile(tape) or
+                        overwrite or VCRSystem.overwrite):
+                    # record mode
+                    if PY2:
+                        msg = 'VCR records only in PY3 to be backward ' + \
+                              'compatible with PY2 - skipping VCR ' + \
+                              'mechanics for %s'
+                        warnings.warn(msg % (func.__name__))
+                        # disable VCR
                         VCRSystem.stop()
-                        raise Exception(msg)
-                    else:
-                        warnings.warn(msg)
-                else:
-                    # remove existing tape
-                    try:
-                        os.remove(tape)
-                    except OSError:
-                        pass
-                    # write playlist to file
-                    with gzip.open(tape, 'wb') as fh:
-                        pickle.dump(VCRSystem.playlist, fh, protocol=2)
-            else:
-                # playback mode
-                if VCRSystem.debug:
-                    print('\nVCR PLAYBACK (%s) ...' % (func_name))
-                VCRSystem.status = VCR_PLAYBACK
-                # if playback is requested and tape is missing: raise!
-                if not os.path.exists(tape):
-                    msg = 'Missing VCR tape file for playback: {}'.format(tape)
-                    # reset before raising
-                    if debug:
-                        VCRSystem.debug = system_debug
-                    VCRSystem.stop()
-                    raise IOError(msg)
-                # load playlist
-                try:
-                    with gzip.open(tape, 'rb') as fh:
-                        VCRSystem.playlist = pickle.load(fh)
-                except OSError:
-                    # support for older uncompressed tapes
-                    with open(tape, 'rb') as fh:
-                        VCRSystem.playlist = pickle.load(fh)
-                # execute decorated function
-                try:
+                        # execute decorated function without VCR
+                        return func(*args, **kwargs)
+                    if VCRSystem.debug:
+                        print('\nVCR RECORDING (%s) ...' % (func_name))
+                    VCRSystem.status = VCR_RECORD
+                    # execute decorated function
                     value = func(*args, **kwargs)
-                except Exception:
-                    # reset before raising
-                    if debug:
-                        VCRSystem.debug = system_debug
-                    VCRSystem.stop()
-                    raise
-
-            # disable VCR
-            if debug:
-                VCRSystem.debug = system_debug
-            VCRSystem.stop()
+                    # check if vcr is actually used at all
+                    if len(VCRSystem.playlist) == 0:
+                        msg = 'no socket activity - @vcr unneeded for %s'
+                        msg = msg % (func.__name__)
+                        if VCRSystem.raise_if_not_needed:
+                            raise Exception(msg)
+                        else:
+                            warnings.warn(msg)
+                    else:
+                        # remove existing tape
+                        try:
+                            os.remove(tape)
+                        except OSError:
+                            pass
+                        # write playlist to file
+                        with gzip.open(tape, 'wb') as fh:
+                            pickle.dump(VCRSystem.playlist, fh, protocol=2)
+                else:
+                    # playback mode
+                    if VCRSystem.debug:
+                        print('\nVCR PLAYBACK (%s) ...' % (func_name))
+                    VCRSystem.status = VCR_PLAYBACK
+                    # if playback is requested and tape is missing: raise!
+                    if not os.path.exists(tape):
+                        msg = 'Missing VCR tape file for playback: {}'
+                        raise IOError(msg.format(tape))
+                    # load playlist
+                    try:
+                        with gzip.open(tape, 'rb') as fh:
+                            VCRSystem.playlist = pickle.load(fh)
+                    except OSError:
+                        # support for older uncompressed tapes
+                        with open(tape, 'rb') as fh:
+                            VCRSystem.playlist = pickle.load(fh)
+                    # execute decorated function
+                    value = func(*args, **kwargs)
 
             return value
 
