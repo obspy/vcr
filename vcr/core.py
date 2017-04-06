@@ -498,6 +498,10 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                     msg = 'no socket activity - @vcr decorator unneeded for %s'
                     msg = msg % func.__name__
                     if VCRSystem.raise_if_not_needed:
+                        # reset before raising
+                        if debug:
+                            VCRSystem.debug = system_debug
+                        VCRSystem.stop()
                         raise Exception(msg)
                     else:
                         warnings.warn(msg)
