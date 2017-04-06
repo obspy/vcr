@@ -156,6 +156,7 @@ class CoreTestCase(unittest.TestCase):
         def temp_test():
             r = urlopen('https://www.python.org/')
             self.assertEqual(r.status, 200)
+
         # run it once
         temp_test()
         # get creation date of tape
@@ -188,7 +189,10 @@ class CoreTestCase(unittest.TestCase):
             r = urlopen('https://www.python.org/')
             self.assertEqual(r.status, 200)
 
+        # tape file should not exists beforehand
+        self.assertFalse(os.path.exists(self.temp_test_vcr))
         # run it once - usually it should generate test_core.custom_test.vcr
+        # but in this case the tape file has been given
         custom_test()
         # check if given tape file exists
         self.assertTrue(os.path.exists(self.temp_test_vcr))
