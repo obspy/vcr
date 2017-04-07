@@ -121,15 +121,18 @@ def _normalize_http_header(name, args, kwargs):
         args = tuple([x])
 
         # normalize user-agent string
-        pattern = (
-            b'User-Agent: python-requests/.*?(\\r\\n)')
-        repl = b'User-Agent: python-requests/x.x.x\\1'
+        pattern = b'User-Agent: .*?(\\r\\n)'
+        repl = b'User-Agent: xxx\\1'
         args = tuple([re.sub(pattern, repl, args[0], count=1)])
 
         # normalize 'boundary=...' string
-        pattern = (
-            b'(boundary)=[0-9a-fA-F]{32}((\\r\\n)|(;))')
+        pattern = b'(boundary)=[0-9a-fA-F]{32}((\\r\\n)|(;))'
         repl = b'\\1=xxx\\2'
+        args = tuple([re.sub(pattern, repl, args[0], count=1)])
+
+        # normalize temp filename string
+        pattern = b'filename=(["\'])([^\\1]*)\\1'
+        repl = b'filename=\\1xxx\\1'
         args = tuple([re.sub(pattern, repl, args[0], count=1)])
     elif args[0].startswith(b'--'):
         # treat follow-up line with above boundary string.. right now our
