@@ -16,9 +16,10 @@ def runTest(self):  # NOQA
     return self._runTest()
 
 
-doctest.DocTestCase._runTest = doctest.DocTestCase.runTest
-doctest.DocTestCase.runTest = runTest
-doctest.register_optionflag('VCR')
+if getattr(doctest.DocTestCase, '_runTest', None) is None:
+    doctest.DocTestCase._runTest = doctest.DocTestCase.runTest
+    doctest.DocTestCase.runTest = runTest
+    doctest.register_optionflag('VCR')
 
 
 def some_function_with_doctest(url):
