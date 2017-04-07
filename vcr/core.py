@@ -198,7 +198,10 @@ def vcr_select_epoll():
 
 def vcr_select_select(r, w, x, timeout=None):
     if VCRSystem.status == VCR_PLAYBACK:
-        return [], [], []
+        # ugly: requests needs an empty list for r otherwise it disconnects,
+        # while obspy.seedlink disconnects if socket is not within w
+        # for now it works until the next test case ;/
+        return [], w, x
     else:
         return orig_select_select(r, w, x, timeout)
 
