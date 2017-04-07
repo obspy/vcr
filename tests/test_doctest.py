@@ -6,13 +6,20 @@ import unittest
 
 import requests
 
-from vcr import vcr
+from vcr import vcr, VCRSystem
+from vcr.utils import _normalize_http_header
 
 
 # monkey patch DocTestCase
 def runTest(self):  # NOQA
     if '+VCR' in self._dt_test.docstring:
-        return vcr(self._runTest)()
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
+        try:
+            ret = vcr(self._runTest)()
+        finally:
+            VCRSystem.outgoing_check_normalizations = []
+        return ret
     return self._runTest()
 
 

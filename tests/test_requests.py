@@ -2,78 +2,13 @@
 from __future__ import absolute_import, division, print_function
 
 import json
-import re
 import tempfile
 import unittest
 
 import requests
 
 from vcr import vcr, VCRSystem
-
-
-def _normalize_http_header(name, args, kwargs):
-    """
-    normalize http headers in outgoing traffic:
-
-    Expected: sendall (b'POST /post HTTP/1.1\r\n'
-        b'Host: httpbin.org\r\n'
-        b'User-Agent: python-requests/2.13.0\r\n'
-        b'Accept-Encoding: gzip, deflate\r\n'
-        b'Accept: */*\r\n'
-        b'Connection: keep-alive\r\n'
-        b'Content-Length: 147\r\n'
-        b'Content-Type: multipart/form-data; '
-        b'boundary=45c2c6ddafe3498c94b4554d6fb6e503\r\n\r\n',) {}
-    Got:      sendall (b'POST /post HTTP/1.1\r\n'
-        b'Host: httpbin.org\r\n'
-        b'User-Agent: python-requests/2.13.0\r\n'
-        b'Accept-Encoding: gzip, deflate\r\n'
-        b'Accept: */*\r\n'
-        b'Connection: keep-alive\r\n'
-        b'Content-Length: 147\r\n'
-        b'Content-Type: multipart/form-data; '
-        b'boundary=9ce384e773e444fc9ae202103e971aab\r\n\r\n',) {}
-    """
-    if name != 'sendall':
-        return name, args, kwargs
-    if len(args) != 1:
-        return name, args, kwargs
-    if b'HTTP' in args[0]:
-        # sort HTTP headers
-        # example:
-        # (b'GET /fdsnws/event/1/contributors HTTP/1.1\r\n'
-        #  b'Host: service.iris.edu\r\nAccept-Encoding: gzip, deflate\r\n'
-        #  b'User-Agent: python-requests/2.13.0\r\nConnection: keep-alive\r\n'
-        #  b'Accept: */*\r\n\r\n')
-        x = args[0]
-        x = x.split(b'\r\n')
-        # two empty items at the end
-        x = x[:1] + sorted(x[1:-2]) + x[-2:]
-        x = b'\r\n'.join(x)
-        args = tuple([x])
-
-        # normalize user-agent string
-        pattern = (
-            b'User-Agent: python-requests/.*?(\\r\\n)')
-        repl = b'User-Agent: python-requests/x.x.x\\1'
-        args = tuple([re.sub(pattern, repl, args[0], count=1)])
-
-        # normalize 'boundary=...' string
-        pattern = (
-            b'(boundary)=[0-9a-fA-F]{32}((\\r\\n)|(;))')
-        repl = b'\\1=xxx\\2'
-        args = tuple([re.sub(pattern, repl, args[0], count=1)])
-    elif args[0].startswith(b'--'):
-        # treat follow-up line with above boundary string.. right now our
-        # normalization is only aware of the current line.. this should be
-        # changed, we should normalize on the whole playlist to be able to
-        # properly handle such matches that appear over multiple lines..
-
-        # normalize boundary strings on follow-up lines
-        pattern = b'--[0-9a-fA-F]{32}'
-        repl = b'--' + b'x' * 32
-        args = tuple([re.sub(pattern, repl, args[0])])
-    return name, args, kwargs
+from vcr.utils import _normalize_http_header
 
 
 class RequestsTestCase(unittest.TestCase):
