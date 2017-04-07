@@ -113,6 +113,11 @@ class RequestsTestCase(unittest.TestCase):
         r = requests.get('http://service.iris.edu/fdsnws/event/1/contributors')
         self.assertEqual(r.status_code, 200)
 
+    @vcr
+    def test_get_obspy_example(self):
+        r = requests.get('https://examples.obspy.org/test.sac', stream=True)
+        self.assertEqual(r.status_code, 200)
+
 
 if __name__ == '__main__':
     unittest.main()
