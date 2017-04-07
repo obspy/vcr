@@ -14,7 +14,7 @@ except ImportError:
     from xmlrpclib import ServerProxy
 
 
-class TelnetlibTestCase(unittest.TestCase):
+class XMLRPCTestCase(unittest.TestCase):
     """
     Test suite using xmlrpc
     """
