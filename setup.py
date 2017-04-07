@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import doctest
 import unittest
 
 from setuptools import setup, find_packages
@@ -12,6 +13,7 @@ with open('README.rst') as f:
 def vcr_test_suite():
     test_loader = unittest.TestLoader()
     test_suite = test_loader.discover('tests', pattern='test_*.py')
+    test_suite.addTest(doctest.DocTestSuite('test_doctest'))
     return test_suite
 
 
