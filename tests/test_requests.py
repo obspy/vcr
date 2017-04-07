@@ -34,7 +34,9 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_post(self):
-        payload = dict(key1='value1', key2='value2')
+        # order of body items can be controlled by using a list of tuples as
+        # opposed to a dictionary
+        payload = [('key1', 'value1'), ('key2', 'value2')]
         r = requests.post('http://httpbin.org/post', data=payload)
         out = json.loads(r.text)
         self.assertEqual(out['form'], {'key1': 'value1', 'key2': 'value2'})

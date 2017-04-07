@@ -16,7 +16,7 @@ except ImportError:
     from httplib import HTTPConnection, HTTPSConnection
 
 
-class RequestsTestCase(unittest.TestCase):
+class HTTPClientTestCase(unittest.TestCase):
     """
     Test suite using requests
     """
@@ -87,8 +87,8 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_post(self):
-        params = urlencode({'@number': 12524, '@type': 'issue',
-                            '@action': 'show'})
+        params = urlencode([('@number', 12524), ('@type', 'issue'),
+                            ('@action', 'show')])
         headers = {"Content-type": "application/x-www-form-urlencoded",
                    "Accept": "text/plain"}
         conn = HTTPConnection("bugs.python.org")
