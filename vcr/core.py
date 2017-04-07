@@ -164,6 +164,7 @@ class VCRSystem(object):
         cls.recv_timeout = 5
         cls.recv_endmarkers = []
         cls.recv_size = None
+        cls.outgoing_check_normalizations = []
 
     @classmethod
     def clear_playlist(cls):

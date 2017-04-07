@@ -3,7 +3,8 @@ from __future__ import absolute_import, division, print_function
 
 import unittest
 
-from vcr import vcr
+from vcr import vcr, VCRSystem
+from vcr.utils import _normalize_http_header
 
 try:
     # Py3
@@ -19,6 +20,13 @@ class RequestsTestCase(unittest.TestCase):
     """
     Test suite using requests
     """
+    def setUp(self):
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
+
+    def tearDown(self):
+        VCRSystem.reset()
+
     def test_connectivity(self):
         # basic network connection test to exclude network issues
         conn = HTTPSConnection("www.python.org")

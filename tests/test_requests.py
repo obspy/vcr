@@ -15,6 +15,13 @@ class RequestsTestCase(unittest.TestCase):
     """
     Test suite using requests
     """
+    def setUp(self):
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
+
+    def tearDown(self):
+        VCRSystem.reset()
+
     def test_connectivity(self):
         # basic network connection test to exclude network issues
         r = requests.get('https://www.python.org/')

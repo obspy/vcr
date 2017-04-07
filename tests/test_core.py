@@ -6,7 +6,7 @@ import unittest
 import warnings
 
 from vcr import vcr, VCRSystem
-from vcr.utils import catch_stdout, skip_if_py2
+from vcr.utils import catch_stdout, skip_if_py2, _normalize_http_header
 
 try:
     # Py2
@@ -27,6 +27,8 @@ class CoreTestCase(unittest.TestCase):
         self.path = os.path.join(os.path.dirname(__file__), 'vcrtapes')
         self.temp_test_vcr = os.path.join(self.path, 'test_core.temp_test.vcr')
         self.read_test_vcr = os.path.join(self.path, 'test_core.read_test.vcr')
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
 
     def tearDown(self):
         # cleanup temporary files
@@ -34,6 +36,7 @@ class CoreTestCase(unittest.TestCase):
             os.remove(self.temp_test_vcr)
         except OSError:
             pass
+        VCRSystem.reset()
 
     def test_connectivity(self):
         # basic network connection test to exclude network issues
