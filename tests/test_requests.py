@@ -115,7 +115,10 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_get_obspy_example(self):
-        r = requests.get('https://examples.obspy.org/test.sac', stream=True)
+        ua = 'ObsPy/0.0.0+archive (Windows-10-10.0.14393, Python 2.7.11)'
+        headers = {'User-Agent': ua}
+        r = requests.get('https://examples.obspy.org/test.sac', stream=True,
+                         headers=headers)
         self.assertEqual(r.status_code, 200)
 
 
