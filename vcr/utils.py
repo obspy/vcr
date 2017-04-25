@@ -106,6 +106,9 @@ def _normalize_http_header(name, args, kwargs):
         return name, args, kwargs
     if len(args) != 1:
         return name, args, kwargs
+    # test for bytes:
+    if not hasattr(args[0], 'decode'):
+        return name, args, kwargs
     if b'HTTP' in args[0]:
         # sort HTTP headers
         # example:
@@ -125,10 +128,17 @@ def _normalize_http_header(name, args, kwargs):
         repl = b'User-Agent: xxx\\1'
         args = tuple([re.sub(pattern, repl, args[0], count=1)])
 
-        # normalize 'boundary=...' string
-        pattern = b'(boundary)=[0-9a-fA-F]{32}((\\r\\n)|(;))'
-        repl = b'\\1=xxx\\2'
-        args = tuple([re.sub(pattern, repl, args[0], count=1)])
+        dummy_boundary = b'abcdefghijklmnopqrstuv0123456789'
+        patterns_and_repl = [
+            # normalize '--<boundary>...boundary=<boundary>...--<boundary>--' string
+            (b'--([0-9a-fA-F]{32})([^\\1]*)\\1([^\\1]*)\\1--',
+             b''.join([b'--', dummy_boundary, b'\\2', dummy_boundary, b'\\3',
+                       dummy_boundary])),
+            # normalize '...boundary=<boundary>...' string
+            (b'boundary=[0-9a-fA-F]{32}', b'boundary=' + dummy_boundary),
+            ]
+        for pattern, repl in patterns_and_repl:
+            args = tuple([re.sub(pattern, repl, args[0], count=1)])
 
         # normalize temp filename string
         pattern = b'filename=(["\'])([^\\1]*)\\1'

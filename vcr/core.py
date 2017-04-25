@@ -229,6 +229,7 @@ class VCRSystem(object):
                 # lookahead to next playlist item
                 if (name_got == 'sendall' and args_got and
                         len(args_got) == 1 and
+                        hasattr(args_got, 'decode') and
                         args_got[0].startswith(b'POST ') and
                         args_expected[0].endswith(b'\r\n\r\n') and
                         not args_got[0].endswith(b'\r\n\r\n') and
