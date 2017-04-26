@@ -255,9 +255,11 @@ class VCRSystem(object):
                           args_expected, kwargs_expected)
                 if (name_expected, args_expected, kwargs_expected) != \
                         (name_got, args_got, kwargs_got):
-                    msg = '\nExpected: {} {} {}\nGot:      {} {} {}'.format(
+                    msg = ('\nExpected: {} {} {}\nGot:      {} {} {}\n'
+                           'Outgoing check normalizations: {!s}').format(
                         name_expected, args_expected, kwargs_expected,
-                        name_got, args_got, kwargs_got)
+                        name_got, args_got, kwargs_got,
+                        VCRSystem.outgoing_check_normalizations)
                     cls.clear_playlist()
                     raise VCRPlaybackOutgoingTrafficMismatch(msg)
         return value_
