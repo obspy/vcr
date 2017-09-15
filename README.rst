@@ -66,7 +66,7 @@ Just decorate your unit tests with ``@vcr``:
 VCR functionality within doctests requires currently a monkey patch and the
 ``+VCR`` keyword somewhere within the doctest as shown in
 `test_doctest.py
-<https://github.com/obspy/vcr/blob/master/tests/test_doctest.py>`__.
+<https://github.com/obspy/vcr/blob/master/tests/test_doctest.py#L30>`__.
 
 
 License
