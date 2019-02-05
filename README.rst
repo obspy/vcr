@@ -31,11 +31,11 @@ not mocked). This module tackles all three issues mentioned above.
 Installation
 ------------
 
-Install from PyPI_:
+Install from GitHub:
 
 .. code:: sh
 
-   pip install -U vcr
+   pip install -U https://github.com/obspy/vcr/archive/master.zip
 
 
 Usage
