@@ -7,13 +7,21 @@ import unittest
 
 import requests
 
-from vcr import vcr
+from vcr import vcr, VCRSystem
+from vcr.utils import _normalize_http_header
 
 
 class RequestsTestCase(unittest.TestCase):
     """
     Test suite using requests
     """
+    def setUp(self):
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
+
+    def tearDown(self):
+        VCRSystem.reset()
+
     def test_connectivity(self):
         # basic network connection test to exclude network issues
         r = requests.get('https://www.python.org/')
@@ -26,20 +34,27 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_post(self):
-        payload = dict(key1='value1', key2='value2')
+        # order of body items can be controlled by using a list of tuples as
+        # opposed to a dictionary
+        payload = [('key1', 'value1'), ('key2', 'value2')]
         r = requests.post('http://httpbin.org/post', data=payload)
         out = json.loads(r.text)
         self.assertEqual(out['form'], {'key1': 'value1', 'key2': 'value2'})
 
     @vcr
     def test_http_post_file(self):
-        with tempfile.TemporaryFile(mode='wb+') as file:
-            file.write(b'test123')
-            file.seek(0)
-            files = {'file': file}
-            r = requests.post('http://httpbin.org/post', files=files)
-        out = json.loads(r.text)
-        self.assertEqual(out['files']['file'], 'test123')
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
+        try:
+            with tempfile.TemporaryFile(mode='wb+') as file:
+                file.write(b'test123')
+                file.seek(0)
+                files = {'file': file}
+                r = requests.post('http://httpbin.org/post', files=files)
+            out = json.loads(r.text)
+            self.assertEqual(out['files']['file'], 'test123')
+        finally:
+            VCRSystem.outgoing_check_normalizations = []
 
     @vcr
     def test_cookies(self):

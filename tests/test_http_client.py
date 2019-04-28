@@ -3,7 +3,8 @@ from __future__ import absolute_import, division, print_function
 
 import unittest
 
-from vcr import vcr
+from vcr import vcr, VCRSystem
+from vcr.utils import _normalize_http_header
 
 try:
     # Py3
@@ -15,10 +16,17 @@ except ImportError:
     from httplib import HTTPConnection, HTTPSConnection
 
 
-class RequestsTestCase(unittest.TestCase):
+class HTTPClientTestCase(unittest.TestCase):
     """
     Test suite using requests
     """
+    def setUp(self):
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
+
+    def tearDown(self):
+        VCRSystem.reset()
+
     def test_connectivity(self):
         # basic network connection test to exclude network issues
         conn = HTTPSConnection("www.python.org")
@@ -79,8 +87,8 @@ class RequestsTestCase(unittest.TestCase):
 
     @vcr
     def test_http_post(self):
-        params = urlencode({'@number': 12524, '@type': 'issue',
-                            '@action': 'show'})
+        params = urlencode([('@number', 12524), ('@type', 'issue'),
+                            ('@action', 'show')])
         headers = {"Content-type": "application/x-www-form-urlencoded",
                    "Accept": "text/plain"}
         conn = HTTPConnection("bugs.python.org")

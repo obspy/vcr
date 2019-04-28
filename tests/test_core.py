@@ -6,7 +6,7 @@ import unittest
 import warnings
 
 from vcr import vcr, VCRSystem
-from vcr.utils import catch_stdout, skip_if_py2
+from vcr.utils import catch_stdout, skip_if_py2, _normalize_http_header
 
 try:
     # Py2
@@ -27,6 +27,8 @@ class CoreTestCase(unittest.TestCase):
         self.path = os.path.join(os.path.dirname(__file__), 'vcrtapes')
         self.temp_test_vcr = os.path.join(self.path, 'test_core.temp_test.vcr')
         self.read_test_vcr = os.path.join(self.path, 'test_core.read_test.vcr')
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
 
     def tearDown(self):
         # cleanup temporary files
@@ -34,6 +36,7 @@ class CoreTestCase(unittest.TestCase):
             os.remove(self.temp_test_vcr)
         except OSError:
             pass
+        VCRSystem.reset()
 
     def test_connectivity(self):
         # basic network connection test to exclude network issues
@@ -207,6 +210,8 @@ class VCRSystemTestCase(unittest.TestCase):
         self.path = os.path.join(os.path.dirname(__file__), 'vcrtapes')
         self.temp_test_vcr = os.path.join(self.path, 'test_core.temp_test.vcr')
         self.read_test_vcr = os.path.join(self.path, 'test_core.read_test.vcr')
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
 
     def tearDown(self):
         # cleanup temporary files
@@ -238,6 +243,10 @@ class VCRSystemTestCase(unittest.TestCase):
 
         # reset
         VCRSystem.reset()
+        # due to the reset we have to put http header normalizations in place
+        # again which is done in test case setUp()
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
         # re-run the test - again no output
         with catch_stdout() as out:
             read_test()
@@ -271,6 +280,10 @@ class VCRSystemTestCase(unittest.TestCase):
 
         # reset
         VCRSystem.reset()
+        # due to the reset we have to put http header normalizations in place
+        # again which is done in test case setUp()
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
         # get current mtime
         mtime = os.path.getmtime(self.temp_test_vcr)
         # run it again
@@ -299,6 +312,10 @@ class VCRSystemTestCase(unittest.TestCase):
 
         # reset
         VCRSystem.reset()
+        # due to the reset we have to put http header normalizations in place
+        # again which is done in test case setUp()
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
         # re-run the test - again output due to debug mode on decorator level
         with catch_stdout() as out:
             read_test()
@@ -328,6 +345,10 @@ class VCRSystemTestCase(unittest.TestCase):
 
         # reset
         VCRSystem.reset()
+        # due to the reset we have to put http header normalizations in place
+        # again which is done in test case setUp()
+        VCRSystem.outgoing_check_normalizations = [
+            _normalize_http_header]
         # re-run the test - now record mode without exception
         with catch_stdout() as out:
             temp_test()

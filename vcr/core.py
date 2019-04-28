@@ -37,7 +37,7 @@ import tempfile
 import time
 import warnings
 
-from .utils import classproperty, PY2
+from .utils import classproperty, PY2, get_source_code_sha256
 
 
 VCR_RECORD = 0
@@ -51,6 +51,34 @@ orig_getaddrinfo = socket.getaddrinfo
 orig_read_until = telnetlib.Telnet.read_until
 if hasattr(select, 'epoll'):
     orig_select_epoll = select.epoll
+
+
+class VCRException(Exception):
+    pass
+
+
+class VCRRecordingError(VCRException):
+    pass
+
+
+class VCRPlaybackError(VCRException):
+    pass
+
+
+class VCRPlaybackOutgoingTrafficMismatch(VCRPlaybackError):
+    """
+    Exception that gets raised if the intercepted outgoing traffic on playback
+    is not matching the outgoing traffic during recording the VCR tape.
+    """
+    pass
+
+
+class VCRPlaybackSourceCodeChangedError(VCRPlaybackError):
+    """
+    Exception that gets raised if the executed source code has changed since
+    recording the VCR tape and at the time of playback.
+    """
+    pass
 
 
 class VCRSystem(object):
@@ -82,12 +110,28 @@ class VCRSystem(object):
     ``raise_if_not_needed`` : bool
         Raise an exception if vcr decorator is not needed because no socket
         traffic has been recorded, instead of just showing a warning.
+    ``raise_if_source_code_changed`` : bool
+        Raise an exception if the to be executed source code has changed since
+        recoring the VCR tape.
+    ``raise_outgoing_mismatch`` : bool
+        Raise an exception if outgoing traffic encountered during playback is
+        not matching pre-recorded traffic in VCR tape.
+    ``outgoing_check_normalizations`` : list
+        List of functions that normalize outgoing traffic (both actually
+        encountered and pre-recorded) before checking for equality of
+        encountered and pre-recorded. Each function in the list will be applied
+        to outgoing traffic and should have a call syntax of
+        ``def custom_normalization(name, args, kwargs)`` and return a list of
+        potentially modified ``name, args, kwargs``.
     """
     debug = False
     disabled = False
     overwrite = False
     playback_only = False
     raise_if_not_needed = False
+    raise_if_source_code_changed = True
+    raise_outgoing_mismatch = True
+    outgoing_check_normalizations = []
     recv_timeout = 5
     recv_endmarkers = []
     recv_size = None
@@ -120,11 +164,16 @@ class VCRSystem(object):
         cls.recv_timeout = 5
         cls.recv_endmarkers = []
         cls.recv_size = None
+        cls.outgoing_check_normalizations = []
+
+    @classmethod
+    def clear_playlist(cls):
+        cls.playlist = []
 
     @classmethod
     def start(cls):
         # reset
-        cls.playlist = []
+        cls.clear_playlist()
         cls.status = VCR_RECORD
         # apply monkey patches
         socket.socket = VCRSocket
@@ -148,7 +197,7 @@ class VCRSystem(object):
             select.select = orig_select_select
             telnetlib.Telnet.read_until = orig_read_until
         # reset
-        cls.playlist = []
+        cls.clear_playlist()
         cls.status = VCR_RECORD
 
     @classproperty
@@ -158,6 +207,62 @@ class VCRSystem(object):
     @classproperty
     def is_playing(cls):  # @NoSelf
         return cls.status == VCR_PLAYBACK
+
+    @classmethod
+    def replay_next(cls, name_got, args_got, kwargs_got):
+        name_expected, args_expected, kwargs_expected, value_ = \
+            cls.playlist.pop(0)
+        # XXX: py < 3.5 has sometimes two sendall calls ???
+        if sys.version_info < (3, 5):
+            if name_got == 'makefile' and name_expected == 'sendall':
+                name_expected, args_expected, kwargs_expected, value_ = \
+                    cls.playlist.pop(0)
+        if cls.debug:
+            print('  ', name_got, args_got, kwargs_got, ' | ',
+                  name_expected, args_expected, kwargs_expected, '->', value_)
+        if cls.raise_outgoing_mismatch:
+            # XXX TODO put this into a constant up top!?
+            if name_got not in ('recv', 'makefile'):
+                # XXX it seems that on Python 2 some 'sendall's for HTTP POST
+                # are distributed over two calls, concatenate them here for the
+                # check..
+                # lookahead to next playlist item
+                if (name_got == 'sendall' and args_got and
+                        len(args_got) == 1 and
+                        hasattr(args_got, 'decode') and
+                        args_got[0].startswith(b'POST ') and
+                        args_expected[0].endswith(b'\r\n\r\n') and
+                        not args_got[0].endswith(b'\r\n\r\n') and
+                        cls.playlist):
+                    _next_name, _next_args, _next_kwargs, _ = cls.playlist[0]
+                    if (_next_name == 'sendall' and len(_next_args) == 1 and
+                            _next_kwargs == kwargs_got):
+                        args_expected = tuple(
+                            [args_expected[0] + _next_args[0]])
+                        cls.playlist.pop(0)
+                if cls.debug:
+                    print('  checking: ', name_got, args_got, kwargs_got,
+                          ' | ', name_expected, args_expected, kwargs_expected)
+                # apply all normalization functions
+                for norm_func in cls.outgoing_check_normalizations:
+                    name_got, args_got, kwargs_got = norm_func(
+                        name_got, args_got, kwargs_got)
+                    name_expected, args_expected, kwargs_expected = norm_func(
+                        name_expected, args_expected, kwargs_expected)
+                if cls.debug:
+                    print('  checking, after normalization: ', name_got,
+                          args_got, kwargs_got, ' | ', name_expected,
+                          args_expected, kwargs_expected)
+                if (name_expected, args_expected, kwargs_expected) != \
+                        (name_got, args_got, kwargs_got):
+                    msg = ('\nExpected: {} {} {}\nGot:      {} {} {}\n'
+                           'Outgoing check normalizations: {!s}').format(
+                        name_expected, args_expected, kwargs_expected,
+                        name_got, args_got, kwargs_got,
+                        VCRSystem.outgoing_check_normalizations)
+                    cls.clear_playlist()
+                    raise VCRPlaybackOutgoingTrafficMismatch(msg)
+        return value_
 
 
 def vcr_getaddrinfo(*args, **kwargs):
@@ -171,12 +276,7 @@ def vcr_getaddrinfo(*args, **kwargs):
         return value
     else:
         # playback mode
-        data = VCRSystem.playlist.pop(0)
-        value = data[3]
-        if VCRSystem.debug:
-            print('  ', 'getaddrinfo', args, kwargs, ' | ', data[0:3],
-                  '->', value)
-        return value
+        return VCRSystem.replay_next('getaddrinfo', args, kwargs)
 
 
 def vcr_select_epoll():
@@ -312,16 +412,8 @@ class VCRSocket(object):
             return value
         else:
             # playback mode
-            # get first element in playlist
-            data = VCRSystem.playlist.pop(0)
-            # XXX: py < 3.5 has sometimes two sendall calls ???
-            if sys.version_info < (3, 5) and name == 'makefile' and \
-               data[0] == 'sendall':
-                data = VCRSystem.playlist.pop(0)
-            value = data[3]
-            if VCRSystem.debug:
-                print('  ', name, args, kwargs, ' | ', data[0:3], '->', value)
-            return value
+            # get next element in playlist
+            return VCRSystem.replay_next(name, args, kwargs)
 
     def __nonzero__(self):
         return bool(self.__dict__.get('_orig_socket', True))
@@ -510,6 +602,9 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                         else:
                             warnings.warn(msg)
                     else:
+                        # add source code hash as first item in playlist
+                        sha256 = get_source_code_sha256(func)
+                        VCRSystem.playlist.insert(0, sha256)
                         # remove existing tape
                         try:
                             os.remove(tape)
@@ -528,18 +623,25 @@ def vcr(decorated_func=None, debug=False, overwrite=False, disabled=False,
                         msg = 'Missing VCR tape file for playback: {}'
                         raise IOError(msg.format(tape))
                     # load playlist
-                    try:
-                        with gzip.open(tape, 'rb') as fh:
-                            VCRSystem.playlist = pickle.load(fh)
-                    except OSError:
-                        # support for older uncompressed tapes
-                        with open(tape, 'rb') as fh:
-                            VCRSystem.playlist = pickle.load(fh)
+                    with gzip.open(tape, 'rb') as fh:
+                        VCRSystem.playlist = pickle.load(fh)
                     if VCRSystem.debug:
                         print('Loaded playlist:')
-                        for i, item in enumerate(VCRSystem.playlist):
+                        print('SHA256: {}'.format(VCRSystem.playlist[0]))
+                        for i, item in enumerate(VCRSystem.playlist[1:]):
                             print('{:3d}: {} {} {}'.format(i, *item))
                         print()
+                    # check if source code has changed
+                    sha256_playlist = VCRSystem.playlist.pop(0)
+                    if VCRSystem.raise_if_source_code_changed:
+                        sha256 = get_source_code_sha256(func)
+                        if sha256 != sha256_playlist:
+                            msg = ('Source code of test routine has changed '
+                                   'since time when VCR tape was recorded '
+                                   '(file: {}).').format(tape)
+                            raise VCRPlaybackSourceCodeChangedError(msg)
+                        if VCRSystem.debug:
+                            print('SHA256 sum of source code matches playlist')
                     # execute decorated function
                     value = func(*args, **kwargs)
 
